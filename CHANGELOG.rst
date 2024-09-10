@@ -22,7 +22,12 @@ Changelog
     **Deprecated**
     - Marked the `legacy_function` in `utils.py` as deprecated; it will be removed in version 0.4.0.
 
+1.0.1 (2025-05-13)
+------------------
 
+**Added**
+
+- Module program `tilt_align` for external usage.
 
 1.0.0 (2024-09-10)
 ------------------
