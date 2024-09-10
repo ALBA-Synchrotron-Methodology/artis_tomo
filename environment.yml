@@ -1,0 +1,11 @@
+name: artis_tomo
+channels:
+  - conda-forge
+  - anaconda
+  #- emforge
+dependencies:
+  - python=3.9
+  - IPython
+  - pyqtwebengine
+  - pyfftw=0.13.1
+  - tomopy
