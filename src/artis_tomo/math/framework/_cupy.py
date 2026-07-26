@@ -31,7 +31,10 @@ class _interface(_Wrapper):
     _framename = 'cupy'
     _frame = _cp
     _arrayClass = _cp.ndarray
-    _devices = [f'cuda:{n}' for n in range(_cp.cuda.runtime.getDeviceCount())]
+    try:
+        _devices = [f'cuda:{n}' for n in range(_cp.cuda.runtime.getDeviceCount())]
+    except Exception:
+        _devices = []
 
     @classmethod
     def get_device(cls, array):

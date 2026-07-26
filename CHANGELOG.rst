@@ -22,6 +22,15 @@ Changelog
     **Deprecated**
     - Marked the `legacy_function` in `utils.py` as deprecated; it will be removed in version 0.4.0.
 
+1.0.2 (2026-05-20)
+------------------
+
+**Fixed**
+
+- Crash on import when cupy is installed but the CUDA driver is missing or
+  incompatible. The device list is now built defensively and an unusable
+  backend is skipped instead of taking down the framework registry.
+
 1.0.1 (2025-05-13)
 ------------------
 

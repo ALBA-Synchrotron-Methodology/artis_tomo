@@ -44,8 +44,7 @@ class frameworks():
                             cls.deviceFrames[device] = []
                         cls.deviceFrames[device].append(framename)
 
-            except ImportError:  # as err:
-                # print(err)
+            except Exception:
                 pass
 
     @classmethod
