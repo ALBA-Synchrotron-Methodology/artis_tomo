@@ -6,12 +6,12 @@ Module for tomogram reconstruction.
 import numpy as np
 import numba
 import math
-from artis_tomo.math.transforms import tr3d, TMat3D
-# from ..math import fft
-from artis_tomo.image.transformation import getRotatedVolumeRangeZ
-from artis_tomo.image import filter as ft
-from artis_tomo.utils.gpu import gpu
-from artis_tomo.math import framework as fw
+from artis_sci.math.transforms import tr3d, TMat3D
+# from artis_sci.math import fft
+from artis_sci.image.transformation import getRotatedVolumeRangeZ
+from artis_sci.image import filter as ft
+from artis_sci.utils.gpu import gpu
+from artis_sci.math import framework as fw
 from artis_tomo.tomo.filter import bpFilter, bpExactFilter
 from .project import (projectRS, backProjectRS, _projectRS, _backProjectRS,
                       _projectRSCuda, _backProjectRSCuda)

@@ -34,25 +34,98 @@ creating a conda environment:
 
 .. code-block:: bash
 
-    conda create -n artis-tomo
+    conda create -n artis-tomo python=3.10
     conda activate artis-tomo
-    conda install -c conda-forge cudatoolkit cupy
+    conda install -c conda-forge "numpy=1.26" cudatoolkit=11.8 cupy=13
     conda install rapidsai::cubinlinker conda-forge::ptxcompiler
-    pip install artis-tomo
+    pip install "numpy==1.26.*" artis-tomo
 
 Or a micromamba environment:
 
 .. code-block:: bash
 
-    micromamba create -n artis-tomo python=3.9
+    micromamba create -n artis-tomo python=3.10
     micromamba activate artis-tomo
-    micromamba install -c conda-forge cudatoolkit cupy
+    micromamba install -c conda-forge "numpy=1.26" cudatoolkit=11.8 cupy=13
     pip install ptxcompiler-cu11 cubinlinker-cu11 --extra-index-url=https://pypi.nvidia.com
-    pip install artis-tomo
+    pip install "numpy==1.26.*" artis-tomo
+
+numpy is pinned in **both** steps on purpose. Pinning only the conda step lets
+the later ``pip install`` pull a numpy 2.x wheel over it, and pinning only pip
+leaves conda free to move numpy on the next ``install``/``update``. See
+`Version compatibility`_ for why 1.26 is the ceiling.
 
 
-When installing cupy or cudatoolkit, try the most suitable versions
-for your hardware.
+Version compatibility
+~~~~~~~~~~~~~~~~~~~~~
+
+Two independent GPU paths are used: **cupy**, for array operations on the
+framework backend, and **numba.cuda**, for the compiled kernels. They locate
+CUDA libraries differently, so a setup where one works and the other does not
+is entirely possible — check both.
+
+This combination has been verified end to end on an NVIDIA L40
+(compute capability 8.9):
+
+=============  ===========  ===================================================
+Component      Version      Notes
+=============  ===========  ===================================================
+Python         3.10         3.9-3.11 expected to work
+numpy          1.26         **Must be < 1.27**, see below
+numba          0.59.1       Requires ``llvmlite >=0.42,<0.43``
+scipy          1.11.4       Predates numpy 2 support; keep with numpy 1.26
+cupy           13.6         Accepts numpy >=1.22,<2.6
+cudatoolkit    11.8         Provides ``libnvvm.so.4``, needed by numba
+NVIDIA driver  575.57.08    Exposes CUDA 12.9; newer than the toolkit is fine
+=============  ===========  ===================================================
+
+**Why numpy is capped.** ``artis_sci`` pins ``numpy<1.27`` because the code has
+not been validated against numpy 2, and that cap reaches here through the
+dependency. numba 0.59 also declared ``numpy>=1.22,<1.27``, but numba 0.60 and
+later accept numpy 2, so the cap is now the binding constraint rather than
+numba. Lifting it means validating numba, scipy and numpy 2 together, then
+raising the cap and the scipy floor (1.13 or newer) in one go.
+
+**Do not let conda and pip both manage numpy.** If pip downgrades numpy to
+satisfy numba, the conda metadata still records the version it installed, so
+``conda list``/``micromamba list`` and the actual runtime disagree, and a later
+``install``/``update`` can silently restore the incompatible version. Check
+what is really imported with:
+
+.. code-block:: bash
+
+    python -c "import numpy, numba; print(numpy.__version__, numba.__version__)"
+
+**The driver may be newer than the toolkit.** A CUDA 12.x driver runs a CUDA
+11.8 build fine, so there is no need to match them. ``ptxcompiler-cu11`` and
+``cubinlinker-cu11`` provide the minor-version compatibility numba needs to
+target recent architectures from a CUDA 11 toolkit.
+
+Verify both GPU paths after installing:
+
+.. code-block:: bash
+
+    python -c "import cupy; print('cupy devices:', cupy.cuda.runtime.getDeviceCount())"
+    python -c "from numba import cuda; print('numba cuda:', cuda.is_available()); cuda.detect()"
+
+
+Troubleshooting: CUDA_ERROR_STUB_LIBRARY
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If ``numba.cuda.is_available()`` returns ``False`` and ``cuda.detect()`` fails
+with ``CUDA_ERROR_STUB_LIBRARY (34)`` at ``cuInit``, while cupy keeps working,
+then a CUDA *stub* library is shadowing the real driver on ``LD_LIBRARY_PATH``.
+This is a machine configuration problem rather than an **Artis Tomo** one.
+
+Quick check:
+
+.. code-block:: bash
+
+    echo "$LD_LIBRARY_PATH" | tr ':' '\n' | grep stubs
+
+Any match is the cause. ``docs/cuda_stub_library_issue.rst`` explains the
+problem, why it hits numba but not cupy, and how to fix it both system-wide and
+per environment; it is written to be handed to whoever administers the machine.
 
 
 Programs

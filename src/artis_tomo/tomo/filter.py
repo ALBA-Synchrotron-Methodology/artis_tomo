@@ -7,8 +7,8 @@ Filter tools for tomography
 """
 
 import numpy as np
-from ..math import fft, framework as fw
-from artis_tomo.image import (frame as fr,
+from artis_sci.math import fft, framework as fw
+from artis_sci.image import (frame as fr,
                             transformation as tr,
                             filter as ft)
 

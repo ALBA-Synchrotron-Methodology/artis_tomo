@@ -10,65 +10,63 @@ import numpy as np
 import mrcfile
 import h5py
 import numba
-from artis_tomo.tools.parallel import ProgressParallel as Parallel
-from artis_tomo.utils.parser.docopt import docopt
-from artis_tomo.tools.metadataIO import writeImodTransformFile
+from artis_sci.tools.parallel import ProgressParallel as Parallel
+from artis_sci.utils.parser import argparse
+from artis_sci.tools.metadataIO import writeImodTransformFile
 from artis_tomo.tomo.alignment import tiltAlignOptFlow, applyAlign
-from artis_tomo.image.filter import normalizeBg
+from artis_sci.image.filter import normalizeBg
 
 
 def tiltAlignProgram():
-    """{progName}: align tilt series projections.
+    """Align tilt series projections.
 
     Estimate fiducialess local alignment based on Optical Flow
-
-    Usage:
-      {progName} -i <tilt_series> -o <fnOut_root> [options]
-
-    Arguments:
-        -i <tilt_series>  MRC stack file.
-         -o <fnOut_root>  Rootname used for output files aligned stack and
-                          transformation matrices.
-    Options:
-           -a <tlt_file>  IMOD's style tilt file.
-             --ref <idx>  Frame index to be used as reference. By default,
-                          projection at 0º will be used. [Default: -1]
-           --dataset <idx>  If the input is an HDF5 the path to the dataset
-                            must be specified.
-           --xrange <xr>  X range used to average alignment between
-                          consecutive projections around the center of the
-                          tilt axis projection. [Default: 10]
-           --yrange <yr>  Y range used to average alignment between
-                          consecutive projections around the center of the
-                          tilt axis  projection. By default, it uses the whole
-                          dimension. [Default: -1]
-        --center <cx,cy>  X,Y position of the reference image point to be used
-                          as alignment center. If negative, the image center
-                          is used. [Default: -1,-1]
-           --radius <rn>  Radius of the window considered around each pixel in
-                          Optical Flow. [Default: 32]
-            --bgnorm_out  Apply background normalization to fix brightfield
-                          non-uniformities in output aligned projections.
-             --bgnorm_of  Apply background normalization before
-                          estimating Optical Flow local shifts.
-                   --log  Apply logarithm to projections.
-           --j <threads>  Number of threads por parallel computing. If -1,
-                          it uses all available cores. [Default: -1]
-
-
-                 --debug  Plot frames alignment and vector shift map.
-               -h --help  Show this screen.
-            -v --version  Show version.
-
     """
-    arguments = docopt(tiltAlignProgram.__doc__)
-    # print(arguments)
+    parser = argparse.ArgumentParser(
+        description='Align tilt series projections. Estimate fiducialess local alignment based on Optical Flow'
+    )
+    
+    # Required arguments
+    required = parser.add_argument_group('Required arguments')
+    required.add_argument('-i', dest='tilt_series', required=True,
+                          help='MRC stack file.')
+    required.add_argument('-o', dest='fnOut_root', required=True,
+                          help='Rootname used for output files aligned stack and transformation matrices.')
+    
+    # Optional arguments
+    optional = parser.add_argument_group('Optional arguments')
+    optional.add_argument('-a', dest='tlt_file',
+                          help="IMOD's style tilt file.")
+    optional.add_argument('--ref', type=int, default=-1,
+                          help='Frame index to be used as reference. By default, projection at 0º will be used.')
+    optional.add_argument('--dataset',
+                          help='If the input is an HDF5 the path to the dataset must be specified.')
+    optional.add_argument('--xrange', type=int, default=10,
+                          help='X range used to average alignment between consecutive projections around the center of the tilt axis projection.')
+    optional.add_argument('--yrange', type=int, default=-1,
+                          help='Y range used to average alignment between consecutive projections around the center of the tilt axis projection. By default, it uses the whole dimension.')
+    optional.add_argument('--center', default='-1,-1',
+                          help='X,Y position of the reference image point to be used as alignment center. If negative, the image center is used.')
+    optional.add_argument('--radius', type=int, default=32,
+                          help='Radius of the window considered around each pixel in Optical Flow.')
+    optional.add_argument('--bgnorm_out', action='store_true',
+                          help='Apply background normalization to fix brightfield non-uniformities in output aligned projections.')
+    optional.add_argument('--bgnorm_of', action='store_true',
+                          help='Apply background normalization before estimating Optical Flow local shifts.')
+    optional.add_argument('--log', action='store_true',
+                          help='Apply logarithm to projections.')
+    optional.add_argument('--j', type=int, default=-1,
+                          help='Number of threads for parallel computing. If -1, it uses all available cores.')
+    optional.add_argument('--debug', action='store_true',
+                          help='Plot frames alignment and vector shift map.')
+    
+    args = parser.parse_args()
 
     # Prepare input/output files
-    fnStkIn = arguments.get('-i')
-    fnTlt = arguments.get('-a')
-    h5DataPath = arguments.get('--dataset')
-    fnOutRoot = arguments.get('-o')
+    fnStkIn = args.tilt_series
+    fnTlt = args.tlt_file
+    h5DataPath = args.dataset
+    fnOutRoot = args.fnOut_root
 
     # Read data
     if fnStkIn.endswith(".mrc"):
@@ -95,16 +93,16 @@ def tiltAlignProgram():
     stkAli, transList = tilt_align(
         stk,
         tiltList,
-        refId = int(arguments.get('--ref')),
-        centerStr = arguments.get('--center'),
-        xRange = int(arguments.get('--xrange')),
-        yRange = int(arguments.get('--yrange')),
-        radius = int(arguments.get('--radius')),
-        normBgOF = arguments.get('--bgnorm_of'),
-        normBgOut = arguments.get('--bgnorm_out'),
-        applyLog = arguments.get('--log'),
-        debug = arguments.get('--debug'),
-        nProcs = int(arguments.get('--j'))
+        refId = args.ref,
+        centerStr = args.center,
+        xRange = args.xrange,
+        yRange = args.yrange,
+        radius = args.radius,
+        normBgOF = args.bgnorm_of,
+        normBgOut = args.bgnorm_out,
+        applyLog = args.log,
+        debug = args.debug,
+        nProcs = args.j
     )
 
     # Save

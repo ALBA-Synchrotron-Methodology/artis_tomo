@@ -6,8 +6,8 @@ Tomogram class for tomography
 @authors: Josue Gomez & Joaquin Oton
 """
 import numpy as np
-import artis_tomo.io.imageIO as iio
-from artis_tomo.math import transforms as tf
+import artis_sci.io.imageIO as iio
+from artis_sci.math import transforms as tf
 
 class Tomogram():
     def __init__(self, pxsize):

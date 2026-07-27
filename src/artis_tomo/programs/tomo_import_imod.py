@@ -11,10 +11,10 @@ from pathlib import Path
 
 import transforms3d.affines
 
-from artis_tomo.utils.parser import argparse
+from artis_sci.utils.parser import argparse
 from artis_tomo.tomo import tomogram as tm
-from artis_tomo.math import transforms as tf
-from artis_tomo.io import imageIO as io
+from artis_sci.math import transforms as tf
+from artis_sci.io import imageIO as io
 from artis_tomo.tomo import project as pr
 
 
@@ -173,7 +173,7 @@ def getTomoFromFiles(img_arr, fn, tltfn, xrpix, flipz):
         fntlt = Path(tltfn)
         tilt_m_st, tilt_list = _get_tltmatrix(fntlt)
         tomo.setTiltAngles(tilt_list)
-    else:
+    else:  # Input is a volume. It's assumed to be in visualization format
         fntlt = Path(tltfn)
         if fntlt.exists():
            tilt_m_st, tilt_list = _get_tltmatrix(fntlt)
@@ -183,9 +183,14 @@ def getTomoFromFiles(img_arr, fn, tltfn, xrpix, flipz):
         
         tomo.setTiltAngles(tilt_list)
         img_projs = pr.projectRS(img_arr, tilt_m_st)
-        imgs_fn = Path(fn_base + ".ali")
-        imgs_fn.with_suffix('')
+        # Absorbance must be corrected
+        img_projs *= -1
+        img_projs -= np.min(img_projs)
+    
+        # imgs_fn = Path(fn_base + ".ali")
+        imgs_fn = fn_base.with_suffix('.ali')
         io.imwrite(imgs_fn, img_projs.astype(np.float32))
+        
         tomo.setFilename(str(imgs_fn))
         size = tomo.getSize()
         xf_m_st = getIniMat(size)

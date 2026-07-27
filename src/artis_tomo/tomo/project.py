@@ -4,18 +4,19 @@ Module for simulated projections.
 @author: joton
 """
 import numba
+import time as _time
 
 import numpy as np
 import math
 import pywt
 from numba import njit, prange, cuda
-from ..utils.gpu import gpu
+from artis_sci.utils.gpu import gpu
 from joblib import Parallel, delayed
 
-from artis_tomo.math.transforms import tr3d, TMat3D
-from ..math import fft, framework as fw
-from ..image.transformation import getRotatedVolumeRangeZ
-from ..tools.parallel import splitTasks
+from artis_sci.math.transforms import tr3d, TMat3D
+from artis_sci.math import fft, framework as fw
+from artis_sci.image.transformation import getRotatedVolumeRangeZ
+from artis_sci.tools.parallel import splitTasks
 
 
 def mergeWavelet(array):
@@ -631,3 +632,47 @@ def backProjectRS(projs, tMatV: TMat3D, volSize=None, nProcs=1, nThreads=-1,
     rec /= (nt*nx)
 
     return rec
+
+
+def projectVolume(volume, tMatV=None, useGPU=None, label='Projection'):
+    """
+    Project a volume, optionally on the GPU, and report how long it took.
+
+    Wraps :func:`projectRS` with the device handling around it: move the volume
+    to the requested CUDA device, project, bring the result back to the host.
+    Nothing here is specific to what the volume represents.
+
+    Parameters
+    ----------
+    volume : 3D array_like
+        Volume to project.
+    tMatV : TMat3D, optional
+        Orientations to project along. Defaults to a single identity, i.e. one
+        projection along the current Z.
+    useGPU : int or None, optional
+        CUDA device index. ``None`` (default) keeps the computation on the CPU.
+    label : str, optional
+        Prefix for the timing line printed after projecting.
+
+    Returns
+    -------
+    ndarray
+        Stack of projections, one per orientation in *tMatV*, on the host.
+    """
+    xp = fw.frame()
+
+    if useGPU is not None:
+        xp.set_device(f'cuda:{useGPU}', 'cupy')
+        volume = xp.to_device(volume)
+
+    if tMatV is None:
+        tMatV = tr3d.empty(1)
+
+    start = _time.time()
+    projections = projectRS(volume, tMatV)
+    finish = _time.time()
+
+    projections = xp.to_device(projections, 'cpu')
+    print(f"{label}. time elapsed: {round(finish - start, 2)} s")
+
+    return projections
